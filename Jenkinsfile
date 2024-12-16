@@ -39,7 +39,7 @@ pipeline {
                         // Find the most recent backup file
                         def latestBackupFile = sh(script: '''
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz | head -n 1"
+                                "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz 2>/dev/null | head -n 1"
                         ''', returnStdout: true).trim()
 
                         // Check if a backup file exists
@@ -56,12 +56,11 @@ pipeline {
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
                                 "tar -xzf /tmp/$(basename ${latestBackupFile}) -C /etc/pve && rm /tmp/$(basename ${latestBackupFile})"
                             """
-                            // Verify the Restoration
+
+                            // Restart cluster services
                             sh """
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                # Start the cluster services
-                                "systemctl start pve-cluster"
-                                " systemctl start pve-cluster"
+                                "systemctl restart pve-cluster && systemctl restart corosync"
                             """
                         } else {
                             error "No backup files found to restore."
@@ -77,7 +76,7 @@ pipeline {
             echo 'Backup/Restore operation completed successfully.'
         }
         failure {
-            echo 'Backup/Restore operation failed.'
+            echo 'Backup/Restore operation failed. Please check the logs for details.'
         }
     }
 }
