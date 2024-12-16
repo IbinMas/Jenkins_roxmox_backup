@@ -46,15 +46,11 @@ pipeline {
                         if (latestBackupFile) {
                             echo "Restoring from backup: ${latestBackupFile}"
 
-                            // Copy the latest backup to the Proxmox server
-                            sh """
-                            scp -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${latestBackupFile} ${SSH_USER}@${PROXMOX_HOST}:/tmp/
-                            """
 
                             // Restore the configuration
                             sh """
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                "tar -xzf /tmp/\$(basename ${latestBackupFile}) -C /etc/pve && rm /tmp/\$(basename ${latestBackupFile})"
+                                "cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\\\$(basename \\\${latestBackupFile}) -C /etc/pve && rm /tmp/\\\$(basename \\\${latestBackupFile})"
                             """
 
                             // Restart cluster services
