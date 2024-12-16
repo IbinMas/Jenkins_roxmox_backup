@@ -27,15 +27,7 @@ pipeline {
         }
 
         stage('Restore Proxmox Configuration') {
-            input {
-                message "Do you want to restore the latest Proxmox configuration?"
-                parameters {
-                    booleanParam(name: 'ConfirmRestore', defaultValue: false, description: 'Confirm restoration of the latest backup')
-                }
-            }
-            when {
-                expression { return params.ConfirmRestore == true }
-            }
+
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
