@@ -87,9 +87,9 @@ pipeline {
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} <<'EOF'
                                 mkdir -p /tmp/proxmox-restore
                                 cp ${latestBackupFile} /tmp/
-                                tar -xzf /tmp/$(basename ${latestBackupFile}) -C /tmp/proxmox-restore
+                                tar -xzf /tmp/\$(basename ${latestBackupFile}) -C /tmp/proxmox-restore
                                 rsync -a /tmp/proxmox-restore/etc/pve/ /etc/pve
-                                rm -rf /tmp/proxmox-restore /tmp/$(basename ${latestBackupFile})
+                                rm -rf /tmp/proxmox-restore /tmp/\$(basename ${latestBackupFile})
                                 systemctl restart pve-cluster
                                 systemctl restart corosync
                             EOF
