@@ -11,7 +11,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-                        sh '''
+                        sh """
                         # Ensure backup directory exists
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "mkdir -p ${BACKUP_DIR}"
 
@@ -24,7 +24,7 @@ pipeline {
 
                         # Clean up old backups (older than 90 days)
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "find ${BACKUP_DIR} -type f -name 'proxmox-backup-*.tar.gz' -mtime +90 -exec rm {} \\;"
-                        '''
+                        """
                     }
                 }
             }
@@ -44,37 +44,35 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
                         // Find the most recent backup file
-                        def latestBackupFile = sh(script: '''
+                        def latestBackupFile = sh(script: """
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \
                                 "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz 2>/dev/null | head -n 1"
-                        ''', returnStdout: true).trim()
+                        """, returnStdout: true).trim()
 
                         // Check if a backup file exists
                         if (latestBackupFile) {
                             echo "Restoring from backup: ${latestBackupFile}"
 
                             // Stop Proxmox services
-                            ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} '''
-                                for i in pve-cluster pvedaemon vz qemu-server; do
-                                    systemctl stop $i || true
-                                done
-                            '''
+                            sh """
+                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} 'for i in pve-cluster pvedaemon vz qemu-server; do systemctl stop \$i || true; done'
+                            """
 
                             // Restore the configuration
                             try {
-                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} '''
-                                    cp ${latestBackupFile} /tmp/ && \
-                                    tar -xzf /tmp/$(basename "${latestBackupFile}") -C /etc/pve && \
-                                    rm /tmp/$(basename "${latestBackupFile}")
-                                '''
+                                sh """
+                                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \
+                                        'cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\$(basename "${latestBackupFile}") -C /etc/pve && rm /tmp/\$(basename "${latestBackupFile}")'
+                                """
                             } catch (Exception e) {
                                 error "Restore failed: ${e.message}"
                             }
 
                             // Restart Proxmox services
-                            ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} '''
-                                systemctl restart pve-cluster && systemctl restart corosync
-                            '''
+                            sh """
+                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \
+                                    'systemctl restart pve-cluster && systemctl restart corosync'
+                            """
                         } else {
                             error "No backup files found to restore."
                         }
