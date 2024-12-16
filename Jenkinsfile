@@ -92,14 +92,14 @@ pipeline {
                             // Copy files from the temporary location to /etc/pve with root permissions
                             sh(script: """
                                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                    "sudo rsync -a /tmp/proxmox-restore/etc/pve/ /etc/pve && \\
+                                    "rsync -a /tmp/proxmox-restore/etc/pve/ /etc/pve && \\
                                     rm -rf /tmp/proxmox-restore"
                             """, mask: true)
 
                             // Restart Proxmox services to apply changes
                             sh(script: """
                                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                    "systemctl restart pve-cluster && sudo systemctl restart corosync"
+                                    "systemctl restart pve-cluster && systemctl restart corosync"
                             """, mask: true)
 
                             echo "Proxmox configuration restored successfully."
