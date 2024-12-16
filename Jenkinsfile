@@ -28,6 +28,41 @@ pipeline {
                 }
             }
         }
+        // stage('Restore Proxmox Configuration') {
+        //     input {
+        //         message "Do you want to restore the latest Proxmox configuration?"
+        //     }
+        //     steps {
+        //         script {
+        //             withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
+        //                 // Find the most recent backup file
+        //                 def latestBackupFile = sh(script: '''
+        //                     ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
+        //                         "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz 2>/dev/null | head -n 1"
+        //                 ''', returnStdout: true).trim()
+
+        //                 // Check if a backup file exists
+        //                 if (latestBackupFile) {
+        //                     echo "Restoring from backup: ${latestBackupFile}"
+
+        //                     // Copy and restore the configuration
+        //                     sh(script: """
+        //                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
+        //                             'cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\$(basename "${latestBackupFile}") -C /etc/pve && rm /tmp/\$(basename "${latestBackupFile}")'
+        //                     """, mask: true)
+
+        //                     // Restart cluster services
+        //                     sh(script: """
+        //                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
+        //                             'systemctl restart pve-cluster && systemctl restart corosync'
+        //                     """, mask: true)
+        //                 } else {
+        //                     error "No backup files found to restore."
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
         stage('Restore Proxmox Configuration') {
             input {
                 message "Do you want to restore the latest Proxmox configuration?"
@@ -36,26 +71,38 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
                         // Find the most recent backup file
-                        def latestBackupFile = sh(script: '''
+                        def latestBackupFile = sh(script: """
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
                                 "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz 2>/dev/null | head -n 1"
-                        ''', returnStdout: true).trim()
+                        """, returnStdout: true).trim()
 
                         // Check if a backup file exists
                         if (latestBackupFile) {
                             echo "Restoring from backup: ${latestBackupFile}"
 
-                            // Copy and restore the configuration
+                            // Extract backup to a temporary location
                             sh(script: """
                                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                    'cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\$(basename "${latestBackupFile}") -C /etc/pve && rm /tmp/\$(basename "${latestBackupFile}")'
+                                    "mkdir -p /tmp/proxmox-restore && \\
+                                    cp ${latestBackupFile} /tmp/ && \\
+                                    tar -xzf /tmp/\$(basename ${latestBackupFile}) -C /tmp/proxmox-restore && \\
+                                    rm /tmp/\$(basename ${latestBackupFile})"
                             """, mask: true)
 
-                            // Restart cluster services
+                            // Copy files from the temporary location to /etc/pve with root permissions
                             sh(script: """
                                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                    'systemctl restart pve-cluster && systemctl restart corosync'
+                                    "sudo rsync -a /tmp/proxmox-restore/etc/pve/ /etc/pve && \\
+                                    rm -rf /tmp/proxmox-restore"
                             """, mask: true)
+
+                            // Restart Proxmox services to apply changes
+                            sh(script: """
+                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
+                                    "sudo systemctl restart pve-cluster && sudo systemctl restart corosync"
+                            """, mask: true)
+
+                            echo "Proxmox configuration restored successfully."
                         } else {
                             error "No backup files found to restore."
                         }
