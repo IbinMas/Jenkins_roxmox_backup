@@ -22,7 +22,7 @@ pipeline {
 
                         # Clean up old backups (older than 90 days)
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "find ${BACKUP_DIR} -type f -name 'proxmox-backup-*.tar.gz' -mtime +90 -exec rm {} \;"
+                            "find ${BACKUP_DIR} -type f -name 'proxmox-backup-*.tar.gz' -mtime +90 -exec rm {} \\;"
                         '''
                     }
                 }
@@ -42,7 +42,7 @@ pipeline {
 
                         # Restore the configuration
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "tar -xzf /tmp/proxmox-backup-*.tar.gz -C / && rm /tmp/proxmox-backup-*.tar.gz"
+                            "tar -xzf /tmp/proxmox-backup-*.tar.gz -C /etc/pve && rm /tmp/proxmox-backup-*.tar.gz"
                         '''
                     }
                 }
