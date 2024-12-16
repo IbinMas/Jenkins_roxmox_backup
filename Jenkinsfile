@@ -14,11 +14,11 @@ pipeline {
                         sh '''
                         # Create a timestamped backup file
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "tar -czf ${BACKUP_DIR}/proxmox-backup-$(date +%Y-%m-%d).tar.gz /etc/pve"
+                            "tar -czf ${BACKUP_DIR}/proxmox-backup-\$(date +%Y-%m-%d).tar.gz /etc/pve"
 
                         # Verify the integrity of the backup
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "tar -tzf ${BACKUP_DIR}/proxmox-backup-$(date +%Y-%m-%d).tar.gz > /dev/null || exit 1"
+                            "tar -tzf ${BACKUP_DIR}/proxmox-backup-\$(date +%Y-%m-%d).tar.gz > /dev/null || exit 1"
 
                         # Clean up old backups (older than 90 days)
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
@@ -54,7 +54,7 @@ pipeline {
                             // Restore the configuration
                             sh """
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                "tar -xzf /tmp/$(basename ${latestBackupFile}) -C /etc/pve && rm /tmp/$(basename ${latestBackupFile})"
+                                "tar -xzf /tmp/\$(basename ${latestBackupFile}) -C /etc/pve && rm /tmp/\$(basename ${latestBackupFile})"
                             """
 
                             // Restart cluster services
