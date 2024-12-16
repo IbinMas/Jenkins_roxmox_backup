@@ -41,9 +41,10 @@ pipeline {
                             echo "Restoring from backup: ${latestBackupFile}"
                             
                             // Stop the required services
-                            sh(script: """
-                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} 'for i in pve-cluster pvedaemon vz qemu-server; do systemctl stop \$i || true; done'
-                            """)
+                            sh(script: '''
+                              ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "for i in pve-cluster pvedaemon; do systemctl stop $i || true; done"
+                            ''')
+
 
                             // Copy and restore the configuration
                             sh(script: """
