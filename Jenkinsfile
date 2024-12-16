@@ -41,8 +41,9 @@ pipeline {
                 }
             }
             when {
-                expression { params.ConfirmRestore }
+                expression { return params.ConfirmRestore }
             }
+
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
