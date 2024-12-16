@@ -85,13 +85,24 @@ pipeline {
                         // Perform restore as root user
                         sh(script: """
                             ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} <<'EOF'
+                                # Stop Proxmox services before restoring
+                                systemctl stop pve-cluster
+                                systemctl stop corosync
+                                
+                                # Prepare for restore
                                 mkdir -p /tmp/proxmox-restore
                                 cp ${latestBackupFile} /tmp/
                                 tar -xzf /tmp/\$(basename ${latestBackupFile}) -C /tmp/proxmox-restore
-                                rsync -a /tmp/proxmox-restore/etc/pve/ /etc/pve
+                                
+                                # Use rsync to restore files, ensuring ownership and timestamps are not altered
+                                rsync -a --no-times --no-owner /tmp/proxmox-restore/etc/pve/ /etc/pve
+                                
+                                # Clean up
                                 rm -rf /tmp/proxmox-restore /tmp/\$(basename ${latestBackupFile})
-                                systemctl restart pve-cluster
-                                systemctl restart corosync
+                                
+                                # Restart Proxmox services
+                                systemctl start corosync
+                                systemctl start pve-cluster
                             EOF
                         """, mask: true)
 
