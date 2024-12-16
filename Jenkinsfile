@@ -99,7 +99,7 @@ pipeline {
                             // Restart Proxmox services to apply changes
                             sh(script: """
                                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                    "sudo systemctl restart pve-cluster && sudo systemctl restart corosync"
+                                    "systemctl restart pve-cluster && sudo systemctl restart corosync"
                             """, mask: true)
 
                             echo "Proxmox configuration restored successfully."
