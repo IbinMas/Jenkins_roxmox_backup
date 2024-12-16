@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROXMOX_HOST = "192.168.100.2"
+        PROXMOX_HOST = "192.168.1.193"
         BACKUP_DIR = "/mnt/PROXMOX_BACKUP"
     }
 
