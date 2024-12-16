@@ -16,11 +16,11 @@ pipeline {
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "mkdir -p ${BACKUP_DIR}"
 
                         # Create a timestamped backup file
-                        BACKUP_FILE="${BACKUP_DIR}/proxmox-backup-$(date +%Y-%m-%d).tar.gz"
-                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "tar -czf ${BACKUP_FILE} /etc/pve"
+                        BACKUP_FILE="${BACKUP_DIR}/proxmox-backup-\$(date +%Y-%m-%d).tar.gz"
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "tar -czf \${BACKUP_FILE} /etc/pve"
 
                         # Verify the integrity of the backup
-                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "tar -tzf ${BACKUP_FILE} > /dev/null || exit 1"
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "tar -tzf \${BACKUP_FILE} > /dev/null || exit 1"
 
                         # Clean up old backups (older than 90 days)
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "find ${BACKUP_DIR} -type f -name 'proxmox-backup-*.tar.gz' -mtime +90 -exec rm {} \\;"
