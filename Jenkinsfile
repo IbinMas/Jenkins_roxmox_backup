@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROXMOX_HOST = "192.168.1.193"
+        PROXMOX_HOST = "192.168.100.2"
         BACKUP_DIR = "/mnt/PROXMOX_BACKUP"
     }
 
@@ -27,7 +27,15 @@ pipeline {
         }
 
         stage('Restore Proxmox Configuration') {
-
+            input {
+                message "Do you want to restore the latest Proxmox configuration?"
+                parameters {
+                    booleanParam(name: 'ConfirmRestore', defaultValue: false, description: 'Confirm restoration of the latest backup')
+                }
+            }
+            when {
+                expression { return params.ConfirmRestore == true }
+            }
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
@@ -42,7 +50,7 @@ pipeline {
                             
                             // Stop the required services
                             sh(script: """
-                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} 'for i in pve-cluster pvedaemon vz qemu-server; do systemctl stop $i || true; done'
+                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} 'for i in pve-cluster pvedaemon vz qemu-server; do systemctl stop \$i || true; done'
                             """)
 
                             // Copy and restore the configuration
