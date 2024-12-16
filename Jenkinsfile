@@ -28,7 +28,6 @@ pipeline {
                 }
             }
         }
-
         stage('Restore Proxmox Configuration') {
             input {
                 message "Do you want to restore the latest Proxmox configuration?"
@@ -46,18 +45,17 @@ pipeline {
                         if (latestBackupFile) {
                             echo "Restoring from backup: ${latestBackupFile}"
 
-
-                            // Restore the configuration
-                            sh """
-                            ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                "cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\\\$(basename \\\${latestBackupFile}) -C /etc/pve && rm /tmp/\\\$(basename \\\${latestBackupFile})"
-                            """
+                            // Copy and restore the configuration
+                            sh(script: """
+                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
+                                    'cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\$(basename "${latestBackupFile}") -C /etc/pve && rm /tmp/\$(basename "${latestBackupFile}")'
+                            """, mask: true)
 
                             // Restart cluster services
-                            sh """
-                            ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                "systemctl restart pve-cluster && systemctl restart corosync"
-                            """
+                            sh(script: """
+                                ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
+                                    'systemctl restart pve-cluster && systemctl restart corosync'
+                            """, mask: true)
                         } else {
                             error "No backup files found to restore."
                         }
@@ -65,6 +63,7 @@ pipeline {
                 }
             }
         }
+
     }
 
     post {
