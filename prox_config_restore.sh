@@ -5,7 +5,7 @@
 ###########################
 
 DEFAULT_BACK_DIR="/mnt/pve/media/ROXMOX_BACKUP"
-TEMP_DIR=$(mktemp -d)
+# TEMP_DIR=$(mktemp -d)
 
 ###########################
 
@@ -24,33 +24,34 @@ echo "Using the most recent backup file: $BACKUP_FILE"
 echo "Stopping Proxmox services..."
 services=("pveproxy" "pvestatd" "pvedaemon" "pve-cluster" "corosync" "pve-ha-lrm" "pve-ha-crm" "pve-firewall" "pvescheduler")
 
-for service in "${services[@]}"; do
-    echo "Stopping $service..."
-    systemctl stop $service || echo "Warning: Failed to stop $service."
-done
+# for service in "${services[@]}"; do
+#     echo "Stopping $service..."
+#     systemctl stop $service || echo "Warning: Failed to stop $service."
+# done
 
-# Verify that services are stopped
-for service in "${services[@]}"; do
-    echo "Verifying $service is stopped..."
-    systemctl status $service | grep "Active:" || echo "$service is not running."
-done
+# # Verify that services are stopped
+# for service in "${services[@]}"; do
+#     echo "Verifying $service is stopped..."
+#     systemctl status $service | grep "Active:" || echo "$service is not running."
+# done
 
 # Extract backup
 echo "Restoring from backup: $BACKUP_FILE"
-tar -xzf "$BACKUP_FILE" -C "$TEMP_DIR" || { echo "Error: Failed to extract backup file."; exit 1; }
+tar -xzf "$BACKUP_FILE" -C / || { echo "Error: Failed to extract backup file."; exit 1; }
+# tar -xzf "$BACKUP_FILE" -C "$TEMP_DIR" || { echo "Error: Failed to extract backup file."; exit 1; }
 
-# Restore files from the backup
-echo "Restoring files from backup..."
-cp -a "$TEMP_DIR/." / || { echo "Error: Failed to restore files."; exit 1; }
+# # Restore files from the backup
+# echo "Restoring files from backup..."
+# cp -a "$TEMP_DIR/." / || { echo "Error: Failed to restore files."; exit 1; }
 
 # Set correct permissions
-echo "Setting correct permissions..."
-chown -R root:www-data /etc/pve
-chown -R root:root /var/lib/pve-cluster
+# echo "Setting correct permissions..."
+# chown -R root:www-data /etc/pve
+# chown -R root:root /var/lib/pve-cluster
 
-# Clean up temporary directory
-echo "Cleaning up temporary files..."
-rm -rf "$TEMP_DIR"
+# # Clean up temporary directory
+# echo "Cleaning up temporary files..."
+# rm -rf "$TEMP_DIR"
 
 # Restart Proxmox services after restoring
 echo "Restarting Proxmox services..."

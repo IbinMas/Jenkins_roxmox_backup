@@ -38,8 +38,8 @@ echo "Creating backup for $HOSTNAME..."
 
 # Backup critical system files
 tar -czf "$TEMP_DIR/$BACKUP_FILENAME" \
-    -C / etc/pve \
-    -C / var/lib/pve-cluster || { echo "Backup failed."; exit 1; }
+    -C / etc/pve || { echo "Backup failed."; exit 1; }
+    # -C / var/lib/pve-cluster || { echo "Backup failed."; exit 1; }
 
 # Debugging: Check if the backup file is created in TEMP_DIR
 echo "Temporary backup file: $TEMP_DIR/$BACKUP_FILENAME"
