@@ -24,16 +24,16 @@ echo "Using the most recent backup file: $BACKUP_FILE"
 echo "Stopping Proxmox services..."
 services=("pveproxy" "pvestatd" "pvedaemon" "pve-cluster" "corosync" "pve-ha-lrm" "pve-ha-crm" "pve-firewall" "pvescheduler")
 
-# for service in "${services[@]}"; do
-#     echo "Stopping $service..."
-#     systemctl stop $service || echo "Warning: Failed to stop $service."
-# done
+for service in "${services[@]}"; do
+    echo "Stopping $service..."
+    systemctl stop $service || echo "Warning: Failed to stop $service."
+done
 
-# # Verify that services are stopped
-# for service in "${services[@]}"; do
-#     echo "Verifying $service is stopped..."
-#     systemctl status $service | grep "Active:" || echo "$service is not running."
-# done
+# Verify that services are stopped
+for service in "${services[@]}"; do
+    echo "Verifying $service is stopped..."
+    systemctl status $service | grep "Active:" || echo "$service is not running."
+done
 
 # Extract backup
 echo "Restoring from backup: $BACKUP_FILE"
@@ -49,21 +49,21 @@ tar -xzf "$BACKUP_FILE" -C / || { echo "Error: Failed to extract backup file."; 
 # chown -R root:www-data /etc/pve
 # chown -R root:root /var/lib/pve-cluster
 
-# # Clean up temporary directory
-# echo "Cleaning up temporary files..."
-# rm -rf "$TEMP_DIR"
+# Clean up temporary directory
+echo "Cleaning up temporary files..."
+rm -rf "$TEMP_DIR"
 
 # Restart Proxmox services after restoring
 echo "Restarting Proxmox services..."
 for service in "${services[@]}"; do
-    echo "Starting $service..."
+    # echo "Starting $service..."
     systemctl start $service || echo "Warning: Failed to start $service."
 done
 
-# Verify that services are running
-for service in "${services[@]}"; do
-    echo "Verifying $service is running..."
-    systemctl status $service | grep "Active:" || echo "Warning: $service did not start correctly."
-done
+# # Verify that services are running
+# for service in "${services[@]}"; do
+#     echo "Verifying $service is running..."
+#     systemctl status $service | grep "Active:" || echo "Warning: $service did not start correctly."
+# done
 
 echo "Restore completed successfully. Verify the system functionality."

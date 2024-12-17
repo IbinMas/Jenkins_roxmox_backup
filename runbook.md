@@ -16,6 +16,7 @@ This runbook provides step-by-step instructions for safely backing up and restor
 - SSH access to the Proxmox server with a user account that has sufficient privileges to access `/etc/pve`.
 - A designated backup directory on a local or remote system.
 - Ensure there is enough disk space in the backup directory and on the Proxmox server for temporary storage.
+-  Ensure a drive is attached and mounted to /mnt/pve/media/ROXMOX_BACKUP
 
 ### **2. Backup Steps**
 1. **Access the Proxmox Server**:
