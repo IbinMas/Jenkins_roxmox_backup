@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         PROXMOX_HOST = "192.168.1.193"
-        BACKUP_SCRIPT = "./rox_config_backup.sh"
+        BACKUP_SCRIPT = "./prox_config_backup.sh"
         RESTORE_SCRIPT = "./prox_config_restore.sh"
         REMOTE_BACKUP_PATH = "~/prox_config_backup.sh"
         REMOTE_RESTORE_PATH = "~/prox_config_restore.sh"
