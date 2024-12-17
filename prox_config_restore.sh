@@ -1,3 +1,4 @@
+# cat ./prox_config_restore.sh 
 #!/bin/bash
 
 ###########################
@@ -5,7 +6,6 @@
 ###########################
 
 DEFAULT_BACK_DIR="/mnt/pve/media/ROXMOX_BACKUP"
-# TEMP_DIR=$(mktemp -d)
 
 ###########################
 
@@ -22,48 +22,71 @@ echo "Using the most recent backup file: $BACKUP_FILE"
 
 # Stop necessary Proxmox services before restoring
 echo "Stopping Proxmox services..."
-services=("pveproxy" "pvestatd" "pvedaemon" "pve-cluster" "corosync" "pve-ha-lrm" "pve-ha-crm" "pve-firewall" "pvescheduler")
+services=("pvestatd" "pvedaemon" "pve-cluster")
 
 for service in "${services[@]}"; do
     echo "Stopping $service..."
-    systemctl stop $service || echo "Warning: Failed to stop $service."
+    systemctl stop "$service" || echo "Warning: Failed to stop $service."
 done
 
-# Verify that services are stopped
+# Restore /etc/hosts
+echo "Restoring /etc/hosts..."
+tar -xzf "$BACKUP_FILE" -C /tmp './hosts.backup' || { echo "Error: Failed to extract hosts.backup."; exit 1; }
+mv /tmp/hosts.backup /etc/hosts || { echo "Error: Failed to move hosts.backup to /etc/hosts."; exit 1; }
+
+# Restore /etc/network/interfaces
+echo "Restoring /etc/network/interfaces..."
+tar -xzf "$BACKUP_FILE" -C /tmp './interfaces.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
+mv /tmp/interfaces.backup /etc/network/interfaces || { echo "Error: Failed to move interfaces.backup to /etc/network/interfaces."; exit 1; }
+
+# Restore the files in /root/.ssh/
+echo "Restoring /root/.ssh..."
+tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
+rm -f /tmp/ssh-backup.tar.gz
+
+# Replace /var/lib/pve-cluster/
+echo "Restoring /var/lib/pve-cluster..."
+rm -rf /var/lib/pve-cluster || { echo "Error: Failed to remove /var/lib/pve-cluster."; exit 1; }
+mkdir -p /var/lib/pve-cluster
+tar -xzf "$BACKUP_FILE" -C /tmp './pve-cluster-backup.tar.gz' || { echo "Error: Failed to extract pve-cluster-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/pve-cluster-backup.tar.gz -C /var/lib/pve-cluster || { echo "Error: Failed to restore /var/lib/pve-cluster."; exit 1; }
+rm -f /tmp/pve-cluster-backup.tar.gz
+
+# Replace /etc/corosync/
+echo "Restoring /etc/corosync..."
+rm -rf /etc/corosync || { echo "Error: Failed to remove /etc/corosync."; exit 1; }
+mkdir -p /etc/corosync
+tar -xzf "$BACKUP_FILE" -C /tmp './corosync-backup.tar.gz' || { echo "Error: Failed to extract corosync-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/corosync-backup.tar.gz -C /etc/corosync || { echo "Error: Failed to restore /etc/corosync."; exit 1; }
+rm -f /tmp/corosync-backup.tar.gz
+
+# # Restore /etc/pve
+# echo "Restoring /etc/pve..."
+# tar -xzf "$BACKUP_FILE" -C /tmp './pve-backup.tar.gz' || { echo "Error: Failed to extract pve-backup.tar.gz."; exit 1; }
+# tar -xzf /tmp/pve-backup.tar.gz -C /etc/pve || { echo "Error: Failed to restore /etc/pve."; exit 1; }
+# rm -f /tmp/pve-backup.tar.gz
+
+# Start pve-cluster service
+echo "Starting pve-cluster service..."
+systemctl start pve-cluster.service || { echo "Error: Failed to start pve-cluster.service."; exit 1; }
+
+# Restore the two SSH symlinks
+echo "Restoring SSH symlinks..."
+ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys || { echo "Error: Failed to restore authorized_keys symlink."; exit 1; }
+ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys.orig || { echo "Error: Failed to restore authorized_keys.orig symlink."; exit 1; }
+
+# Start remaining Proxmox services
+echo "Starting remaining Proxmox services..."
+for service in "pvestatd" "pvedaemon"; do
+    echo "Starting $service..."
+    systemctl start "$service" || echo "Warning: Failed to start $service."
+done
+
+# Verify that all services are running
+echo "Verifying service statuses..."
 for service in "${services[@]}"; do
-    echo "Verifying $service is stopped..."
-    systemctl status $service | grep "Active:" || echo "$service is not running."
+    systemctl status "$service" | grep "Active:" || echo "Warning: $service is not running."
 done
-
-# Extract backup
-echo "Restoring from backup: $BACKUP_FILE"
-tar -xzf "$BACKUP_FILE" -C / || { echo "Error: Failed to extract backup file."; exit 1; }
-# tar -xzf "$BACKUP_FILE" -C "$TEMP_DIR" || { echo "Error: Failed to extract backup file."; exit 1; }
-
-# # Restore files from the backup
-# echo "Restoring files from backup..."
-# cp -a "$TEMP_DIR/." / || { echo "Error: Failed to restore files."; exit 1; }
-
-# Set correct permissions
-# echo "Setting correct permissions..."
-# chown -R root:www-data /etc/pve
-# chown -R root:root /var/lib/pve-cluster
-
-# Clean up temporary directory
-echo "Cleaning up temporary files..."
-rm -rf "$TEMP_DIR"
-
-# Restart Proxmox services after restoring
-echo "Restarting Proxmox services..."
-for service in "${services[@]}"; do
-    # echo "Starting $service..."
-    systemctl start $service || echo "Warning: Failed to start $service."
-done
-
-# # Verify that services are running
-# for service in "${services[@]}"; do
-#     echo "Verifying $service is running..."
-#     systemctl status $service | grep "Active:" || echo "Warning: $service did not start correctly."
-# done
 
 echo "Restore completed successfully. Verify the system functionality."

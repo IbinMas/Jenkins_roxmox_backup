@@ -33,13 +33,29 @@ function clean_up {
 
 trap clean_up EXIT
 
-# Create backup
-echo "Creating backup for $HOSTNAME..."
+# Stop necessary Proxmox services before backup
+echo "Stopping Proxmox services..."
+services=( "pvestatd" "pvedaemon" "pve-cluster" )
+for service in "${services[@]}"; do
+    systemctl stop "$service"
+    echo "$service stopped."
+done
 
 # Backup critical system files
-tar -czf "$TEMP_DIR/$BACKUP_FILENAME" \
-    -C / etc/pve || { echo "Backup failed."; exit 1; }
-    # -C / var/lib/pve-cluster || { echo "Backup failed."; exit 1; }
+echo "Creating backup for $HOSTNAME..."
+
+# Create individual backups for each critical directory
+mkdir -p "$TEMP_DIR/backup"
+
+tar -czf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz" /var/lib/pve-cluster
+tar -czf "$TEMP_DIR/backup/ssh-backup.tar.gz" /root/.ssh
+tar -czf "$TEMP_DIR/backup/corosync-backup.tar.gz" /etc/corosync
+tar -czf "$TEMP_DIR/backup/pve-backup.tar.gz" /etc/pve
+cp /etc/hosts "$TEMP_DIR/backup/hosts.backup"
+cp /etc/network/interfaces "$TEMP_DIR/backup/interfaces.backup"
+
+# Combine all backups into one tarball
+tar -czf "$TEMP_DIR/$BACKUP_FILENAME" -C "$TEMP_DIR/backup" .
 
 # Debugging: Check if the backup file is created in TEMP_DIR
 echo "Temporary backup file: $TEMP_DIR/$BACKUP_FILENAME"
@@ -57,5 +73,15 @@ else
     echo "Failed to move backup file."
     exit 1
 fi
+
+# Restart Proxmox services after backup
+echo "Restarting Proxmox services..."
+for service in "${services[@]}"; do
+    systemctl start "$service"
+    echo "$service started."
+done
+
+# Cleanup temporary files
+clean_up
 
 echo "Backup completed successfully."

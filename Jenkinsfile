@@ -9,6 +9,7 @@ pipeline {
         REMOTE_RESTORE_PATH = "~/prox_config_restore.sh"
         SSH_KEY_PATH = credentials('proxmox_server')
         SSH_USER = 'root'
+        DEFAULT_BACK_DIR="/mnt/pve/media/ROXMOX_BACKUP"
     }
 
     stages {
@@ -18,10 +19,24 @@ pipeline {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
                         // Ensure scripts are executable and transfer to server
                         sh "chmod +x ${BACKUP_SCRIPT} ${RESTORE_SCRIPT}"
-                        // sh "ssh-keygen -R 192.168.1.193"
+                        sh "mkdir -p ${DEFAULT_BACK_DIR}"
                         sh """
                         scp -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${BACKUP_SCRIPT} ${SSH_USER}@${PROXMOX_HOST}:${REMOTE_BACKUP_PATH}
                         scp -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${RESTORE_SCRIPT} ${SSH_USER}@${PROXMOX_HOST}:${REMOTE_RESTORE_PATH}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('check cluster status and create a test cluster') {
+            steps {
+                script {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
+                        // Run pvecm status and create cluster on the remote Proxmox server
+                        sh """
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm create test-cluster-01"
                         """
                     }
                 }
@@ -39,6 +54,19 @@ pipeline {
                         if (result != 0) {
                             error "Backup script execution failed on Proxmox server."
                         }
+                    }
+                }
+            }
+        }
+
+        stage('check cluster status after Backup') {
+            steps {
+                script {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
+                        // Check cluster status after backup on the remote Proxmox server
+                        sh """
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
+                        """
                     }
                 }
             }
@@ -72,6 +100,19 @@ pipeline {
                 }
             }
         }
+
+        stage('check cluster status after restore') {
+            steps {
+                script {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
+                        // Check cluster status after restore on the remote Proxmox server
+                        sh """
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
+                        """
+                    }
+                }
+            }
+        }   
     }
 
     post {
