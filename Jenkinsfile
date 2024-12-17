@@ -31,70 +31,40 @@ pipeline {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-                        sh '''
-                        # Create a timestamped backup file
-                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "tar -czf ${BACKUP_DIR}/proxmox-backup-\\$(date +%Y-%m-%d).tar.gz /etc/pve"
-
-                        # Verify the integrity of the backup
-                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "tar -tzf ${BACKUP_DIR}/proxmox-backup-\\$(date +%Y-%m-%d).tar.gz > /dev/null || exit 1"
-
-                        # Clean up old backups (older than 90 days)
-                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                            "find ${BACKUP_DIR} -type f -name 'proxmox-backup-*.tar.gz' -mtime +90 -exec rm {} \\;"
-                        '''
+                        // Run the backup script on the Proxmox server
+                        def result = sh(script: """
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "bash ${REMOTE_BACKUP_PATH}"
+                        """, returnStatus: true)
+                        if (result != 0) {
+                            error "Backup script execution failed on Proxmox server."
+                        }
                     }
                 }
             }
         }
-        // stage('Restore Proxmox Configuration') {
-        //     input {
-        //         message "Do you want to restore the latest Proxmox configuration?"
-        //     }
-        //     steps {
-        //         script {
-        //             withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-        //                 // Find the most recent backup file
-        //                 def latestBackupFile = sh(script: '''
-        //                     ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-        //                         "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz 2>/dev/null | head -n 1"
-        //                 ''', returnStdout: true).trim()
 
-        //                 // Check if a backup file exists
-        //                 if (latestBackupFile) {
-        //                     echo "Restoring from backup: ${latestBackupFile}"
-
-        //                     // Copy and restore the configuration
-        //                     sh(script: """
-        //                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-        //                             'cp ${latestBackupFile} /tmp/ && tar -xzf /tmp/\$(basename "${latestBackupFile}") -C /etc/pve && rm /tmp/\$(basename "${latestBackupFile}")'
-        //                     """, mask: true)
-
-        //                     // Restart cluster services
-        //                     sh(script: """
-        //                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-        //                             'systemctl restart pve-cluster && systemctl restart corosync'
-        //                     """, mask: true)
-        //                 } else {
-        //                     error "No backup files found to restore."
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
         stage('Restore Proxmox Configuration') {
-
+            input {
+                message "Do you want to restore the latest Proxmox configuration?"
+            }
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-                        // Find the latest backup file
+                        // Get the latest backup file
                         def latestBackupFile = sh(script: """
-                            ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} \\
-                                "ls -t ${BACKUP_DIR}/proxmox-backup-*.tar.gz 2>/dev/null | head -n 1"
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} 'ls -t /mnt/pve/media/ROXMOX_BACKUP/*.tar.gz | head -n 1'
                         """, returnStdout: true).trim()
 
-                        if (!latestBackupFile) {
+                        if (latestBackupFile) {
+                            // Run the restore script on the Proxmox server
+                            def restoreResult = sh(script: """
+                            ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "bash ${REMOTE_RESTORE_PATH} ${latestBackupFile}"
+                            """, returnStatus: true)
+
+                            if (restoreResult != 0) {
+                                error "Restore script execution failed on Proxmox server."
+                            }
+                        } else {
                             error "No backup files found to restore."
                         }
                     }
