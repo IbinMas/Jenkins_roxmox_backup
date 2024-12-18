@@ -58,9 +58,9 @@ for service in "${services[@]}"; do
     echo "$service stopped."
 done
 
-# Ensure no processes are using the directories
-echo "Checking for active processes using /etc/pve..."
-lsof +D /etc/pve
+# # Ensure no processes are using the directories
+# echo "Checking for active processes using /etc/pve..."
+# lsof +D /etc/pve
 
 # Function to create tarball if directory exists
 create_backup() {
