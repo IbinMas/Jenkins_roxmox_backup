@@ -69,11 +69,11 @@ tar -xzf "$BACKUP_FILE" -C /tmp './corosync-backup.tar.gz' || { echo "Error: Fai
 tar -xzf /tmp/corosync-backup.tar.gz -C /etc/corosync || { echo "Error: Failed to restore /etc/corosync."; exit 1; }
 rm -f /tmp/corosync-backup.tar.gz
 
-# # Restore /etc/pve
-# echo "Restoring /etc/pve..."
-# tar -xzf "$BACKUP_FILE" -C /tmp './pve-backup.tar.gz' || { echo "Error: Failed to extract pve-backup.tar.gz."; exit 1; }
-# tar -xzf /tmp/pve-backup.tar.gz -C /etc/pve || { echo "Error: Failed to restore /etc/pve."; exit 1; }
-# rm -f /tmp/pve-backup.tar.gz
+# Restore /etc/pve
+echo "Restoring /etc/pve..."
+tar -xzf "$BACKUP_FILE" -C /tmp './pve-backup.tar.gz' || { echo "Error: Failed to extract pve-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/pve-backup.tar.gz -C /etc/pve || { echo "Error: Failed to restore /etc/pve."; exit 1; }
+rm -f /tmp/pve-backup.tar.gz
 
 # Start pve-cluster service
 echo "Starting pve-cluster service..."
