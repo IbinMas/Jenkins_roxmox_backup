@@ -5,126 +5,103 @@
 ###########################
 
 DEFAULT_BACK_DIR="/mnt/pve/media/ROXMOX_BACKUP"
-BACKUP_DIR=${BACK_DIR:-$DEFAULT_BACK_DIR}
-MAX_BACKUPS=5
 
 ###########################
 
-# Exit on error
-set -e
+# Find the most recent backup file
+BACKUP_FILE=$(ls -t ${DEFAULT_BACK_DIR}/*.tar.gz 2>/dev/null | head -n 1)
 
-# Ensure backup directory exists
-if [[ ! -d "$BACKUP_DIR" ]]; then
-    echo "Error: Backup directory does not exist, creating it."
-    mkdir -p "$DEFAULT_BACK_DIR"
-fi
-
-# Generate timestamp and filenames
-NOW=$(date +%Y-%m-%d.%H.%M.%S)
-HOSTNAME=$(hostname)
-BACKUP_FILENAME="pve_${HOSTNAME}_${NOW}.tar.gz"
-TEMP_DIR=$(mktemp -d)
-
-# Temporary cleanup function
-function clean_up {
-    # Remove temporary directory
-    rm -rf "$TEMP_DIR"
-}
-
-trap clean_up EXIT
-
-# Backup critical system files
-echo "Creating backup for $HOSTNAME..."
-
-# Create individual backups for each critical directory
-mkdir -p "$TEMP_DIR/backup"
-
-# Copy directories to temporary location before stopping services
-echo "Copying /root/.ssh to $TEMP_DIR/backup/ssh"
-rsync -av /root/.ssh "$TEMP_DIR/backup/ssh"
-
-echo "Copying /etc/pve to $TEMP_DIR/backup/pve"
-rsync -av /etc/pve "$TEMP_DIR/backup/pve"
-
-# Verify contents of /etc/pve in the temporary directory
-echo "Contents of $TEMP_DIR/backup/pve after copy:"
-ls -lR "$TEMP_DIR/backup/pve"
-
-# Stop necessary Proxmox services before creating other backups
-echo "Stopping Proxmox services..."
-services=( "pvestatd" "pvedaemon" "pve-cluster" )
-for service in "${services[@]}"; do
-    systemctl stop "$service"
-    echo "$service stopped."
-done
-
-# # Ensure no processes are using the directories
-# echo "Checking for active processes using /etc/pve..."
-# lsof +D /etc/pve
-
-# Function to create tarball if directory exists
-create_backup() {
-    local src_dir="$1"
-    local dest_file="$2"
-    if [[ -d "$src_dir" || -f "$src_dir" ]]; then
-        echo "Creating tarball for $src_dir..."
-        tar -czf "$dest_file" -C "$(dirname "$src_dir")" "$(basename "$src_dir")"
-        echo "Backup created for $src_dir."
-    else
-        echo "Warning: $src_dir does not exist, skipping."
-    fi
-}
-
-create_backup "$TEMP_DIR/backup/ssh" "$TEMP_DIR/backup/ssh-backup.tar.gz"
-create_backup "$TEMP_DIR/backup/pve" "$TEMP_DIR/backup/pve-backup.tar.gz"
-create_backup "/var/lib/pve-cluster" "$TEMP_DIR/backup/pve-cluster-backup.tar.gz"
-create_backup "/etc/corosync" "$TEMP_DIR/backup/corosync-backup.tar.gz"
-
-# Copy critical configuration files if they exist
-for file in /etc/hosts /etc/network/interfaces /etc/networks /etc/resolv.conf; do
-    if [[ -f "$file" ]]; then
-        cp "$file" "$TEMP_DIR/backup/$(basename "$file").backup"
-    else
-        echo "Warning: $file does not exist, skipping."
-    fi
-done
-
-# Combine all backups into one tarball
-tar -czf "$TEMP_DIR/$BACKUP_FILENAME" -C "$TEMP_DIR/backup" .
-
-# Debugging: Check contents of individual tarballs
-echo "Listing contents of individual backup tarballs:"
-tar -tf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz"
-tar -tf "$TEMP_DIR/backup/ssh-backup.tar.gz"
-tar -tf "$TEMP_DIR/backup/corosync-backup.tar.gz"
-tar -tf "$TEMP_DIR/backup/pve-backup.tar.gz"
-
-# Debugging: Check if the backup file is created in TEMP_DIR
-echo "Temporary backup file: $TEMP_DIR/$BACKUP_FILENAME"
-ls -l "$TEMP_DIR"
-tar -tf "$TEMP_DIR/$BACKUP_FILENAME"
-
-# Handle backup cleanup: Delete backups older than 90 days
-echo "Cleaning up backups older than 90 days..."
-find "$BACKUP_DIR" -type f -name "*_${HOSTNAME}_*.tar.gz" -mtime +90 -exec rm -v {} \;
-
-# Move the new backup to the backup directory
-echo "Moving backup to $BACKUP_DIR..."
-if mv "$TEMP_DIR/$BACKUP_FILENAME" "$BACKUP_DIR/"; then
-    echo "Backup successfully moved to $BACKUP_DIR"
-else
-    echo "Failed to move backup file."
+# Verify the most recent backup file exists
+if [[ -z "$BACKUP_FILE" ]]; then
+    echo "Error: No backup files found in $DEFAULT_BACK_DIR."
     exit 1
 fi
 
-# Restart Proxmox services after backup
-echo "Restarting Proxmox services..."
+echo "Using the most recent backup file: $BACKUP_FILE"
+
+# Stop necessary Proxmox services before restoring
+echo "Stopping Proxmox services..."
+services=("pvestatd" "pvedaemon" "pve-cluster")
+
 for service in "${services[@]}"; do
-    systemctl start "$service"
-    echo "$service started."
+    echo "Stopping $service..."
+    systemctl stop "$service" || echo "Warning: Failed to stop $service."
 done
 
-# Cleanup temporary files
-clean_up
+# Restore /etc/hosts
+echo "Restoring /etc/hosts..."
+tar -xzf "$BACKUP_FILE" -C /tmp './hosts.backup' || { echo "Error: Failed to extract hosts.backup."; exit 1; }
+mv /tmp/hosts.backup /etc/hosts || { echo "Error: Failed to move hosts.backup to /etc/hosts."; exit 1; }
 
-echo "Backup completed successfully."
+# Restore /etc/network/interfaces
+echo "Restoring /etc/network/interfaces..."
+tar -xzf "$BACKUP_FILE" -C /tmp './interfaces.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
+mv /tmp/interfaces.backup /etc/network/interfaces || { echo "Error: Failed to move interfaces.backup to /etc/network/interfaces."; exit 1; }
+
+# Restore /etc/networks
+echo "Restoring /etc/networks..."
+tar -xzf "$BACKUP_FILE" -C /tmp './networks.backup' || { echo "Error: Failed to extract networks.backup."; exit 1; }
+mv /tmp/networks.backup /etc/networks || { echo "Error: Failed to move networks.backup to /etc/networks."; exit 1; }
+
+# Restore /etc/resolv.conf
+echo "Restoring /etc/resolv.conf..."
+tar -xzf "$BACKUP_FILE" -C /tmp './resolv.conf.backup' || { echo "Error: Failed to extract resolv.conf.backup."; exit 1; }
+mv /tmp/resolv.conf.backup /etc/resolv.conf || { echo "Error: Failed to move resolv.conf.backup to /etc/resolv.conf."; exit 1; }
+
+# Restore the files in /root/.ssh/
+echo "Restoring /root/.ssh..."
+tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
+rm -f /tmp/ssh-backup.tar.gz
+
+# Replace /var/lib/pve-cluster/
+echo "Restoring /var/lib/pve-cluster..."
+rm -rf /var/lib/pve-cluster || { echo "Error: Failed to remove /var/lib/pve-cluster."; exit 1; }
+mkdir -p /var/lib/pve-cluster
+tar -xzf "$BACKUP_FILE" -C /tmp './pve-cluster-backup.tar.gz' || { echo "Error: Failed to extract pve-cluster-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/pve-cluster-backup.tar.gz -C /var/lib/pve-cluster || { echo "Error: Failed to restore /var/lib/pve-cluster."; exit 1; }
+rm -f /tmp/pve-cluster-backup.tar.gz
+
+# Replace /etc/corosync/
+echo "Restoring /etc/corosync..."
+rm -rf /etc/corosync || { echo "Error: Failed to remove /etc/corosync."; exit 1; }
+mkdir -p /etc/corosync
+tar -xzf "$BACKUP_FILE" -C /tmp './corosync-backup.tar.gz' || { echo "Error: Failed to extract corosync-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/corosync-backup.tar.gz -C /etc/corosync || { echo "Error: Failed to restore /etc/corosync."; exit 1; }
+rm -f /tmp/corosync-backup.tar.gz
+
+# Restore /etc/pve
+echo "Restoring /etc/pve..."
+tar -xzf "$BACKUP_FILE" -C /tmp './pve-backup.tar.gz' || { echo "Error: Failed to extract pve-backup.tar.gz."; exit 1; }
+tar -xzf /tmp/pve-backup.tar.gz -C /etc/pve || { echo "Error: Failed to restore /etc/pve."; exit 1; }
+rm -f /tmp/pve-backup.tar.gz
+
+# Start pve-cluster service
+echo "Starting pve-cluster service..."
+systemctl start pve-cluster.service || { echo "Error: Failed to start pve-cluster.service."; exit 1; }
+
+# Restore the two SSH symlinks
+echo "Restoring SSH symlinks..."
+ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys || { echo "Error: Failed to restore authorized_keys symlink."; exit 1; }
+ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys.orig || { echo "Error: Failed to restore authorized_keys.orig symlink."; exit 1; }
+
+# Check cluster status after restoring
+echo "Checking cluster status after restoring..."
+pvecm status
+
+# Start remaining Proxmox services
+echo "Starting remaining Proxmox services..."
+for service in "pvestatd" "pvedaemon"; do
+    echo "Starting $service..."
+    systemctl start "$service" || echo "Warning: Failed to start $service."
+done
+
+# Verify that all services are running
+echo "Verifying service statuses..."
+for service in "${services[@]}"; do
+    systemctl status "$service" | grep "Active:" || echo "Warning: $service is not running."
+done
+
+echo "Restore completed successfully. Verify the system functionality."
+
+# reboot

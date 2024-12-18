@@ -33,7 +33,24 @@ function clean_up {
 
 trap clean_up EXIT
 
-# Stop necessary Proxmox services before backup
+# Backup critical system files
+echo "Creating backup for $HOSTNAME..."
+
+# Create individual backups for each critical directory
+mkdir -p "$TEMP_DIR/backup"
+
+# Copy directories to temporary location before stopping services
+echo "Copying /root/.ssh to $TEMP_DIR/backup/ssh"
+rsync -av /root/.ssh "$TEMP_DIR/backup/ssh"
+
+echo "Copying /etc/pve to $TEMP_DIR/backup/pve"
+rsync -av /etc/pve "$TEMP_DIR/backup/pve"
+
+# Verify contents of /etc/pve in the temporary directory
+echo "Contents of $TEMP_DIR/backup/pve after copy:"
+ls -lR "$TEMP_DIR/backup/pve"
+
+# Stop necessary Proxmox services before creating other backups
 echo "Stopping Proxmox services..."
 services=( "pvestatd" "pvedaemon" "pve-cluster" )
 for service in "${services[@]}"; do
@@ -41,26 +58,9 @@ for service in "${services[@]}"; do
     echo "$service stopped."
 done
 
-# Ensure no processes are using the directories
-echo "Checking for active processes using /etc/pve..."
-lsof +D /etc/pve
-
-# Backup critical system files
-echo "Creating backup for $HOSTNAME..."
-
-# Create individual backups for each critical directory
-mkdir -p "$TEMP_DIR/backup"
-
-# Copy directories to temporary location before creating tarballs
-echo "Copying /root/.ssh to $TEMP_DIR/backup/ssh"
-cp -r /root/.ssh "$TEMP_DIR/backup/ssh"
-
-echo "Copying /etc/pve to $TEMP_DIR/backup/pve"
-cp -r /etc/pve "$TEMP_DIR/backup/pve"
-
-# Check contents of /etc/pve before creating tarball
-echo "Contents of /etc/pve before backup:"
-ls -l /etc/pve
+# # Ensure no processes are using the directories
+# echo "Checking for active processes using /etc/pve..."
+# lsof +D /etc/pve
 
 # Function to create tarball if directory exists
 create_backup() {
