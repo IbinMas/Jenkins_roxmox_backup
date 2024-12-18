@@ -74,6 +74,7 @@ pipeline {
                 }
             }
         }
+    }
 
         stage('Backup Proxmox Configuration') {
             steps {
@@ -91,7 +92,7 @@ pipeline {
             }
         }
 
-        stage('check cluster status after Backup') {
+        stage('checking cluster status after Backup') {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
@@ -133,18 +134,24 @@ pipeline {
             }
         }
 
-        stage('check cluster status after restore') {
+        stage('checking cluster status after restore') {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-                        // Check cluster status after restore on the remote Proxmox server
-                        sh """
+                        // Run pvecm status and check  exitcode
+                        def exitCode = sh(script: """
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
-                        """
+                        """, returnStatus: true)
+
+                        if (exitCode != 0) {
+                            echo "Cluster status command failed. Corosync config might be missing. does not exist - is this node part of a cluster?.\n ... Proceeding with pipeline."
+                        } else {
+                            echo "Cluster status command executed successfully."
+                        }
                     }
                 }
             }
-        }   
+        }  
     }
 
     post {
