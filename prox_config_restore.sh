@@ -38,12 +38,16 @@ mv /tmp/hosts.backup /etc/hosts || { echo "Error: Failed to move hosts.backup to
 echo "Restoring /etc/network/interfaces..."
 tar -xzf "$BACKUP_FILE" -C /tmp './interfaces.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
 mv /tmp/interfaces.backup /etc/network/interfaces || { echo "Error: Failed to move interfaces.backup to /etc/network/interfaces."; exit 1; }
+# Restore /etc/networks
+echo "Restoring /etc/networks..."
+tar -xzf "$BACKUP_FILE" -C /tmp './networks.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
+mv /tmp/networks.backup /etc/networks || { echo "Error: Failed to move networks.backup to /etc/networks."; exit 1; }
 
 # Restore the files in /root/.ssh/
-echo "Restoring /root/.ssh..."
-tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
-tar -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
-rm -f /tmp/ssh-backup.tar.gz
+# echo "Restoring /root/.ssh..."
+# tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
+# tar -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
+# rm -f /tmp/ssh-backup.tar.gz
 
 # Replace /var/lib/pve-cluster/
 echo "Restoring /var/lib/pve-cluster..."

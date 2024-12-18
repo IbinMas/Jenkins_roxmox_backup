@@ -16,7 +16,8 @@ set -e
 # Ensure backup directory exists
 if [[ ! -d "$BACKUP_DIR" ]]; then
     echo "Error: Backup directory does not exist, exiting."
-    exit 1
+    # exit 1
+     mkdir -p $DEFAULT_BACK_DIR
 fi
 
 # Generate timestamp and filenames
@@ -48,12 +49,12 @@ echo "Creating backup for $HOSTNAME..."
 mkdir -p "$TEMP_DIR/backup"
 
 tar -czf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz" /var/lib/pve-cluster
-tar -czf "$TEMP_DIR/backup/ssh-backup.tar.gz" /root/.ssh
+# tar -czf "$TEMP_DIR/backup/ssh-backup.tar.gz" /root/.ssh
 tar -czf "$TEMP_DIR/backup/corosync-backup.tar.gz" /etc/corosync
 tar -czf "$TEMP_DIR/backup/pve-backup.tar.gz" /etc/pve
 cp /etc/hosts "$TEMP_DIR/backup/hosts.backup"
 cp /etc/network/interfaces "$TEMP_DIR/backup/interfaces.backup"
-
+cp /etc/networks "$TEMP_DIR/backup/networks.backup"
 # Combine all backups into one tarball
 tar -czf "$TEMP_DIR/$BACKUP_FILENAME" -C "$TEMP_DIR/backup" .
 
