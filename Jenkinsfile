@@ -74,7 +74,6 @@ pipeline {
                 }
             }
         }
-    }
 
         stage('Backup Proxmox Configuration') {
             steps {
