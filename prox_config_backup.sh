@@ -48,10 +48,10 @@ echo "Creating backup for $HOSTNAME..."
 # Create individual backups for each critical directory
 mkdir -p "$TEMP_DIR/backup"
 
-tar -czf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz" /var/lib/pve-cluster
-tar -czf "$TEMP_DIR/backup/ssh-backup.tar.gz" /root/.ssh
-tar -czf "$TEMP_DIR/backup/corosync-backup.tar.gz" /etc/corosync
-tar -czf "$TEMP_DIR/backup/pve-backup.tar.gz" /etc/pve
+tar -czf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz" -C / var/lib/pve-cluster
+tar -czf "$TEMP_DIR/backup/ssh-backup.tar.gz" -C / root .ssh
+tar -czf "$TEMP_DIR/backup/corosync-backup.tar.gz" -C / etc corosync
+tar -czf "$TEMP_DIR/backup/pve-backup.tar.gz" -C / etc pve
 cp /etc/hosts "$TEMP_DIR/backup/hosts.backup"
 cp /etc/network/interfaces "$TEMP_DIR/backup/interfaces.backup"
 cp /etc/networks "$TEMP_DIR/backup/networks.backup"
