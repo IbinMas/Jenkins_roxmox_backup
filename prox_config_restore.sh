@@ -44,13 +44,13 @@ tar -xzf "$BACKUP_FILE" -C /tmp './networks.backup' || { echo "Error: Failed to 
 mv /tmp/networks.backup /etc/networks || { echo "Error: Failed to move networks.backup to /etc/networks."; exit 1; }
 # Restore /etc/resolv.conf
 echo "Restoring /etc/resolv.conf..."
-tar -xzf "$BACKUP_FILE" -C /tmp './resolv.conf.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
+tar  -xzf "$BACKUP_FILE" -C /tmp './resolv.conf.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
 mv /tmp/resolv.conf.backup /etc/resolv.conf || { echo "Error: Failed to move networks.backup to /etc/resolv.conf."; exit 1; }
 
 # Restore the files in /root/.ssh/
 echo "Restoring /root/.ssh..."
 tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
-tar -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
+tar --strip-components=2 -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
 rm -f /tmp/ssh-backup.tar.gz
 
 # Replace /var/lib/pve-cluster/
@@ -58,7 +58,7 @@ echo "Restoring /var/lib/pve-cluster..."
 rm -rf /var/lib/pve-cluster || { echo "Error: Failed to remove /var/lib/pve-cluster."; exit 1; }
 mkdir -p /var/lib/pve-cluster
 tar -xzf "$BACKUP_FILE" -C /tmp './pve-cluster-backup.tar.gz' || { echo "Error: Failed to extract pve-cluster-backup.tar.gz."; exit 1; }
-tar -xzf /tmp/pve-cluster-backup.tar.gz -C /var/lib/pve-cluster || { echo "Error: Failed to restore /var/lib/pve-cluster."; exit 1; }
+tar --strip-components=2 -xzf /tmp/pve-cluster-backup.tar.gz -C /var/lib/pve-cluster || { echo "Error: Failed to restore /var/lib/pve-cluster."; exit 1; }
 rm -f /tmp/pve-cluster-backup.tar.gz
 
 # Replace /etc/corosync/
@@ -66,13 +66,13 @@ echo "Restoring /etc/corosync..."
 rm -rf /etc/corosync || { echo "Error: Failed to remove /etc/corosync."; exit 1; }
 mkdir -p /etc/corosync
 tar -xzf "$BACKUP_FILE" -C /tmp './corosync-backup.tar.gz' || { echo "Error: Failed to extract corosync-backup.tar.gz."; exit 1; }
-tar -xzf /tmp/corosync-backup.tar.gz -C /etc/corosync || { echo "Error: Failed to restore /etc/corosync."; exit 1; }
+tar --strip-components=2 -xzf /tmp/corosync-backup.tar.gz -C /etc/corosync || { echo "Error: Failed to restore /etc/corosync."; exit 1; }
 rm -f /tmp/corosync-backup.tar.gz
 
 # Restore /etc/pve
 echo "Restoring /etc/pve..."
 tar -xzf "$BACKUP_FILE" -C /tmp './pve-backup.tar.gz' || { echo "Error: Failed to extract pve-backup.tar.gz."; exit 1; }
-tar -xzf /tmp/pve-backup.tar.gz -C /etc/pve || { echo "Error: Failed to restore /etc/pve."; exit 1; }
+tar --strip-components=2 -xzf /tmp/pve-backup.tar.gz -C /etc/pve || { echo "Error: Failed to restore /etc/pve."; exit 1; }
 rm -f /tmp/pve-backup.tar.gz
 
 # Start pve-cluster service
