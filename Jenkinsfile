@@ -18,7 +18,7 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
                         // Ensure scripts are executable and transfer to server
-                        // sh "ssh-keygen -R 192.168.1.193"
+                        sh "ssh-keygen -R 192.168.1.193"
                         sh "chmod +x ${BACKUP_SCRIPT} ${RESTORE_SCRIPT}"
                         sh "mkdir -p ${DEFAULT_BACK_DIR}"
                         sh """
