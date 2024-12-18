@@ -83,6 +83,7 @@ systemctl start pve-cluster.service || { echo "Error: Failed to start pve-cluste
 echo "Restoring SSH symlinks..."
 ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys || { echo "Error: Failed to restore authorized_keys symlink."; exit 1; }
 ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys.orig || { echo "Error: Failed to restore authorized_keys.orig symlink."; exit 1; }
+echo "Cheking cluster status after Restoring ..."
 pvecm status
 # Start remaining Proxmox services
 echo "Starting remaining Proxmox services..."
@@ -98,3 +99,5 @@ for service in "${services[@]}"; do
 done
 
 echo "Restore completed successfully. Verify the system functionality."
+
+reboot
