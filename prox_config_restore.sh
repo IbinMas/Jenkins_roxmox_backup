@@ -100,4 +100,4 @@ done
 
 echo "Restore completed successfully. Verify the system functionality."
 
-reboot
+# reboot
