@@ -15,9 +15,8 @@ set -e
 
 # Ensure backup directory exists
 if [[ ! -d "$BACKUP_DIR" ]]; then
-    echo "Error: Backup directory does not exist, exiting."
-    # exit 1
-     mkdir -p $DEFAULT_BACK_DIR
+    echo "Error: Backup directory does not exist, creating it."
+    mkdir -p "$DEFAULT_BACK_DIR"
 fi
 
 # Generate timestamp and filenames
@@ -48,14 +47,36 @@ echo "Creating backup for $HOSTNAME..."
 # Create individual backups for each critical directory
 mkdir -p "$TEMP_DIR/backup"
 
-tar -czf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz" -C / var/lib/pve-cluster
-tar -czf "$TEMP_DIR/backup/ssh-backup.tar.gz" -C / root .ssh
-tar -czf "$TEMP_DIR/backup/corosync-backup.tar.gz" -C / etc corosync
-tar -czf "$TEMP_DIR/backup/pve-backup.tar.gz" -C / etc pve
-cp /etc/hosts "$TEMP_DIR/backup/hosts.backup"
-cp /etc/network/interfaces "$TEMP_DIR/backup/interfaces.backup"
-cp /etc/networks "$TEMP_DIR/backup/networks.backup"
-cp /etc/resolv.conf "$TEMP_DIR/backup/resolv.conf.backup"
+# Function to create tarball if directory exists
+create_backup() {
+    local src_dir="$1"
+    local dest_file="$2"
+    if [[ -d "$src_dir" || -f "$src_dir" ]]; then
+        echo "Creating tarball for $src_dir..."
+        tar -czf "$dest_file" -C "$(dirname "$src_dir")" "$(basename "$src_dir")"
+        echo "Backup created for $src_dir."
+    else
+        echo "Warning: $src_dir does not exist, skipping."
+    fi
+}
+
+# Debugging: Print current working directory and list .ssh directory
+echo "Current working directory: $(pwd)"
+ls -l /root/.ssh
+
+create_backup "/var/lib/pve-cluster" "$TEMP_DIR/backup/pve-cluster-backup.tar.gz"
+create_backup "/root/.ssh" "$TEMP_DIR/backup/ssh-backup.tar.gz"
+create_backup "/etc/corosync" "$TEMP_DIR/backup/corosync-backup.tar.gz"
+create_backup "/etc/pve" "$TEMP_DIR/backup/pve-backup.tar.gz"
+
+# Copy critical configuration files if they exist
+for file in /etc/hosts /etc/network/interfaces /etc/networks /etc/resolv.conf; do
+    if [[ -f "$file" ]]; then
+        cp "$file" "$TEMP_DIR/backup/$(basename "$file").backup"
+    else
+        echo "Warning: $file does not exist, skipping."
+    fi
+done
 
 # Combine all backups into one tarball
 tar -czf "$TEMP_DIR/$BACKUP_FILENAME" -C "$TEMP_DIR/backup" .

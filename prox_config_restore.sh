@@ -47,11 +47,11 @@ echo "Restoring /etc/resolv.conf..."
 tar  -xzf "$BACKUP_FILE" -C /tmp './resolv.conf.backup' || { echo "Error: Failed to extract interfaces.backup."; exit 1; }
 mv /tmp/resolv.conf.backup /etc/resolv.conf || { echo "Error: Failed to move networks.backup to /etc/resolv.conf."; exit 1; }
 
-# Restore the files in /root/.ssh/
-echo "Restoring /root/.ssh..."
-tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
-tar --strip-components=2 -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
-rm -f /tmp/ssh-backup.tar.gz
+# # Restore the files in /root/.ssh/
+# echo "Restoring /root/.ssh..."
+# tar -xzf "$BACKUP_FILE" -C /tmp './ssh-backup.tar.gz' || { echo "Error: Failed to extract ssh-backup.tar.gz."; exit 1; }
+# tar --strip-components=2 -xzf /tmp/ssh-backup.tar.gz -C /root/.ssh || { echo "Error: Failed to restore /root/.ssh."; exit 1; }
+# rm -f /tmp/ssh-backup.tar.gz
 
 # Replace /var/lib/pve-cluster/
 echo "Restoring /var/lib/pve-cluster..."
@@ -79,11 +79,11 @@ rm -f /tmp/pve-backup.tar.gz
 echo "Starting pve-cluster service..."
 systemctl start pve-cluster.service || { echo "Error: Failed to start pve-cluster.service."; exit 1; }
 
-# Restore the two SSH symlinks
-echo "Restoring SSH symlinks..."
-ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys || { echo "Error: Failed to restore authorized_keys symlink."; exit 1; }
-ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys.orig || { echo "Error: Failed to restore authorized_keys.orig symlink."; exit 1; }
-echo "Cheking cluster status after Restoring ..."
+# # Restore the two SSH symlinks
+# echo "Restoring SSH symlinks..."
+# ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys || { echo "Error: Failed to restore authorized_keys symlink."; exit 1; }
+# ln -sf /etc/pve/priv/authorized_keys /root/.ssh/authorized_keys.orig || { echo "Error: Failed to restore authorized_keys.orig symlink."; exit 1; }
+# echo "Cheking cluster status after Restoring ..."
 pvecm status
 # Start remaining Proxmox services
 echo "Starting remaining Proxmox services..."
