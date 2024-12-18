@@ -18,7 +18,7 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
                         // Ensure scripts are executable and transfer to server
-                        sh "ssh-keygen -R 192.168.1.193"
+                        // sh "ssh-keygen -R 192.168.1.193"
                         sh "chmod +x ${BACKUP_SCRIPT} ${RESTORE_SCRIPT}"
                         sh "mkdir -p ${DEFAULT_BACK_DIR}"
                         sh """
@@ -30,19 +30,51 @@ pipeline {
             }
         }
 
-        stage('check cluster status and create a test cluster') {
+        // stage('check cluster status and create a test cluster') {
+        //     steps {
+        //         script {
+        //             withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
+        //                 // Run pvecm status and create cluster on the remote Proxmox server
+        //                 sh """
+        //                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
+        //                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm create test-cluster-01"
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
+        stage('Check Cluster Status') {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-                        // Run pvecm status and create cluster on the remote Proxmox server
-                        sh """
+                        // Run pvecm status and check  exitcode
+                        def exitCode = sh(script: """
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
-                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm create test-cluster-01"
+                        """, returnStatus: true)
+
+                        if (exitCode != 0) {
+                            echo "Cluster status command failed. Corosync config might be missing. does not exist - is this node part of a cluster?.\n ... Proceeding with pipeline."
+                        } else {
+                            echo "Cluster status command executed successfully."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Create Cluster if Needed') {
+            steps {
+                script {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
+                        // Create cluster if needed
+                        sh """
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm create test-cluster-01 || echo 'Cluster creation skipped or failed.'"
                         """
                     }
                 }
             }
         }
+    }
 
         stage('Backup Proxmox Configuration') {
             steps {
