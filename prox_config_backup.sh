@@ -41,11 +41,26 @@ for service in "${services[@]}"; do
     echo "$service stopped."
 done
 
+# Ensure no processes are using the directories
+echo "Checking for active processes using /etc/pve..."
+lsof +D /etc/pve
+
 # Backup critical system files
 echo "Creating backup for $HOSTNAME..."
 
 # Create individual backups for each critical directory
 mkdir -p "$TEMP_DIR/backup"
+
+# Copy directories to temporary location before creating tarballs
+echo "Copying /root/.ssh to $TEMP_DIR/backup/ssh"
+cp -r /root/.ssh "$TEMP_DIR/backup/ssh"
+
+echo "Copying /etc/pve to $TEMP_DIR/backup/pve"
+cp -r /etc/pve "$TEMP_DIR/backup/pve"
+
+# Check contents of /etc/pve before creating tarball
+echo "Contents of /etc/pve before backup:"
+ls -l /etc/pve
 
 # Function to create tarball if directory exists
 create_backup() {
@@ -60,14 +75,10 @@ create_backup() {
     fi
 }
 
-# Debugging: Print current working directory and list .ssh directory
-echo "Current working directory: $(pwd)"
-ls -l /root/.ssh
-
+create_backup "$TEMP_DIR/backup/ssh" "$TEMP_DIR/backup/ssh-backup.tar.gz"
+create_backup "$TEMP_DIR/backup/pve" "$TEMP_DIR/backup/pve-backup.tar.gz"
 create_backup "/var/lib/pve-cluster" "$TEMP_DIR/backup/pve-cluster-backup.tar.gz"
-create_backup "/root/.ssh" "$TEMP_DIR/backup/ssh-backup.tar.gz"
 create_backup "/etc/corosync" "$TEMP_DIR/backup/corosync-backup.tar.gz"
-create_backup "/etc/pve" "$TEMP_DIR/backup/pve-backup.tar.gz"
 
 # Copy critical configuration files if they exist
 for file in /etc/hosts /etc/network/interfaces /etc/networks /etc/resolv.conf; do
@@ -81,9 +92,17 @@ done
 # Combine all backups into one tarball
 tar -czf "$TEMP_DIR/$BACKUP_FILENAME" -C "$TEMP_DIR/backup" .
 
+# Debugging: Check contents of individual tarballs
+echo "Listing contents of individual backup tarballs:"
+tar -tf "$TEMP_DIR/backup/pve-cluster-backup.tar.gz"
+tar -tf "$TEMP_DIR/backup/ssh-backup.tar.gz"
+tar -tf "$TEMP_DIR/backup/corosync-backup.tar.gz"
+tar -tf "$TEMP_DIR/backup/pve-backup.tar.gz"
+
 # Debugging: Check if the backup file is created in TEMP_DIR
 echo "Temporary backup file: $TEMP_DIR/$BACKUP_FILENAME"
 ls -l "$TEMP_DIR"
+tar -tf "$TEMP_DIR/$BACKUP_FILENAME"
 
 # Handle backup cleanup: Delete backups older than 90 days
 echo "Cleaning up backups older than 90 days..."

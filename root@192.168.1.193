@@ -33,24 +33,7 @@ function clean_up {
 
 trap clean_up EXIT
 
-# Backup critical system files
-echo "Creating backup for $HOSTNAME..."
-
-# Create individual backups for each critical directory
-mkdir -p "$TEMP_DIR/backup"
-
-# Copy directories to temporary location before stopping services
-echo "Copying /root/.ssh to $TEMP_DIR/backup/ssh"
-rsync -av /root/.ssh "$TEMP_DIR/backup/ssh"
-
-echo "Copying /etc/pve to $TEMP_DIR/backup/pve"
-rsync -av /etc/pve "$TEMP_DIR/backup/pve"
-
-# Verify contents of /etc/pve in the temporary directory
-echo "Contents of $TEMP_DIR/backup/pve after copy:"
-ls -lR "$TEMP_DIR/backup/pve"
-
-# Stop necessary Proxmox services before creating other backups
+# Stop necessary Proxmox services before backup
 echo "Stopping Proxmox services..."
 services=( "pvestatd" "pvedaemon" "pve-cluster" )
 for service in "${services[@]}"; do
@@ -58,9 +41,11 @@ for service in "${services[@]}"; do
     echo "$service stopped."
 done
 
-# Ensure no processes are using the directories
-echo "Checking for active processes using /etc/pve..."
-lsof +D /etc/pve
+# Backup critical system files
+echo "Creating backup for $HOSTNAME..."
+
+# Create individual backups for each critical directory
+mkdir -p "$TEMP_DIR/backup"
 
 # Function to create tarball if directory exists
 create_backup() {
@@ -75,10 +60,14 @@ create_backup() {
     fi
 }
 
-create_backup "$TEMP_DIR/backup/ssh" "$TEMP_DIR/backup/ssh-backup.tar.gz"
-create_backup "$TEMP_DIR/backup/pve" "$TEMP_DIR/backup/pve-backup.tar.gz"
+# Debugging: Print current working directory and list .ssh directory
+echo "Current working directory: $(pwd)"
+ls -l /root/.ssh
+
 create_backup "/var/lib/pve-cluster" "$TEMP_DIR/backup/pve-cluster-backup.tar.gz"
+create_backup "/root/.ssh" "$TEMP_DIR/backup/ssh-backup.tar.gz"
 create_backup "/etc/corosync" "$TEMP_DIR/backup/corosync-backup.tar.gz"
+create_backup "/etc/pve" "$TEMP_DIR/backup/pve-backup.tar.gz"
 
 # Copy critical configuration files if they exist
 for file in /etc/hosts /etc/network/interfaces /etc/networks /etc/resolv.conf; do
