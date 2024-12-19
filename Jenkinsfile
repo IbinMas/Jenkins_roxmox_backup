@@ -30,19 +30,7 @@ pipeline {
             }
         }
 
-        // stage('check cluster status and create a test cluster') {
-        //     steps {
-        //         script {
-        //             withCredentials([sshUserPrivateKey(credentialsId: 'proxmox_server', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USER')]) {
-        //                 // Run pvecm status and create cluster on the remote Proxmox server
-        //                 sh """
-        //                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm status"
-        //                 ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${SSH_USER}@${PROXMOX_HOST} "pvecm create test-cluster-01"
-        //                 """
-        //             }
-        //         }
-        //     }
-        // }
+
         stage('Check Cluster Status') {
             steps {
                 script {

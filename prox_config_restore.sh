@@ -19,8 +19,6 @@ fi
 
 echo "Using the most recent backup file: $BACKUP_FILE"
 
-
-
 # Stop necessary Proxmox services before restoring
 echo "Stopping Proxmox services..."
 services=("pvestatd" "pvedaemon" "pve-cluster")
